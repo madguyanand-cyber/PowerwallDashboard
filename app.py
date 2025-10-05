@@ -24,7 +24,26 @@ def setup_authentication():
         print('--- TeslaPy Authentication Setup ---')
         auth_url = tesla.authorization_url()
         print(f"\nPlease open this URL in your browser:\n{auth_url}\n")
-        url = input("After logging in, paste the full URL of the blank page here: ")
+
+        # Optional non-interactive input sources
+        env_callback = os.environ.get('TESLA_AUTH_CALLBACK')
+        file_callback_path = os.environ.get('TESLA_AUTH_CALLBACK_FILE')
+        url = None
+
+        if env_callback:
+            print('Using TESLA_AUTH_CALLBACK from environment variable.')
+            url = env_callback.strip()
+        elif file_callback_path and os.path.exists(file_callback_path):
+            try:
+                with open(file_callback_path, 'r', encoding='utf-8') as f:
+                    url = f.read().strip()
+                print(f"Using TESLA_AUTH_CALLBACK_FILE: {file_callback_path}")
+            except Exception as e:
+                print(f"Failed to read TESLA_AUTH_CALLBACK_FILE: {e}")
+
+        if not url:
+            url = input("After logging in, paste the full URL of the blank page here: ")
+
         tesla.fetch_token(authorization_response=url)
         print('--- Authentication Successful! ---')
 
@@ -42,7 +61,11 @@ def get_live_status():
         powerwall = powerwalls[0]
         
         # Step 3: Get the live status from that specific powerwall object
-        live_status = powerwall.get_live_status()
+        # TeslaPy versions differ: newer uses get_site_data(), older may have get_live_status()
+        if hasattr(powerwall, 'get_live_status'):
+            live_status = powerwall.get_live_status()
+        else:
+            live_status = powerwall.get_site_data()
 
         return jsonify(live_status)
 
