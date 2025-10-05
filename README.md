@@ -70,3 +70,9 @@ Click the settings icon.
 Enter the public URL of your back-end server (e.g., http://<your-vm-ip>:5000).
 
 Click "Save". The dashboard will connect and display live data.
+
+app.py (The Back-End Server): This is the engine of our project. It's a Python script that runs 24/7 on your Oracle VM. Its main job is to use the TeslaPy library to handle all the difficult and secure communication with the official Tesla API. It creates a simple, private web server that our index.html dashboard can easily talk to. Think of it as the secure translator between our simple dashboard and Tesla's complex systems.
+
+requirements.txt (The Shopping List): This is a simple text file that lists all the Python libraries that app.py needs to run (like teslapy, Flask, etc.). When we set up the server on your VM, we run the command pip install -r requirements.txt. This tells Python's package manager to automatically download and install all the necessary tools for our server to function.
+
+index.html (The Front-End Dashboard): This is the file you actually see and interact with in your web browser. It contains all the HTML for the layout, the CSS (via Tailwind) for the visual design, and the JavaScript for making the cards update. Its only job is to periodically ask your app.py server for the latest data and display it. It doesn't contain any complex authentication logic itself.
