@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Powerwall Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .card { background-color: #1e293b; border-radius: 0.75rem; padding: 1.5rem; }
+        .stat-value { font-size: 2.25rem; line-height: 2.5rem; font-weight: bold; }
+        .stat-unit { font-size: 1.25rem; line-height: 1.75rem; color: #94a3b8; margin-left: 0.25rem;}
+        .modal { backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+    <div id="app" class="max-w-screen-xl mx-auto space-y-6">
+        <!-- Header -->
+        <header>
+            <div class="flex justify-between items-center">
+                 <div>
+                    <h1 class="text-2xl font-bold">Dashboard</h1>
+                    <p id="last-updated" class="text-sm text-slate-400">Last updated: Never</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <p id="connection-status" class="text-red-400 font-semibold flex items-center gap-2"><span class="w-2 h-2 bg-red-400 rounded-full"></span>Disconnected</p>
+                    <button id="settings-button" class="text-slate-400 hover:text-white transition-colors">
+                        <i data-lucide="settings" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Grid (Cards) -->
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+             <div class="card flex flex-col justify-between"> <div class="flex justify-between items-start"> <p class="stat-label">Solar Production</p> <i data-lucide="sun" class="w-8 h-8 text-yellow-400"></i> </div> <div> <p class="stat-value"><span id="solar-value">-.-</span><span class="stat-unit">kW</span></p> <p id="solar-sublabel" class="stat-sublabel">Waiting for data...</p> </div> </div>
+            <div class="card flex flex-col justify-between"> <div class="flex justify-between items-start"> <p class="stat-label">Battery</p> <i id="battery-icon" data-lucide="battery" class="w-8 h-8 text-slate-400"></i> </div> <div> <p class="stat-value"><span id="battery-value">-.-</span><span class="stat-unit">%</span></p> <div class="w-full bg-slate-700 rounded-full h-2 my-1"> <div id="battery-progress" class="bg-slate-500 h-2 rounded-full" style="width: 0%"></div> </div> <p id="battery-sublabel" class="stat-sublabel">Waiting for data...</p> </div> </div>
+            <div class="card flex flex-col justify-between"> <div class="flex justify-between items-start"> <p class="stat-label">Home Power</p> <i data-lucide="home" class="w-8 h-8 text-blue-400"></i> </div> <div> <p class="stat-value"><span id="home-value">-.-</span><span class="stat-unit">kW</span></p> <p id="home-sublabel" class="stat-sublabel">Waiting for data...</p> </div> </div>
+            <div class="card flex flex-col justify-between"> <div class="flex justify-between items-start"> <p class="stat-label">Grid Status</p> <i id="grid-icon" data-lucide="utility-pole" class="w-8 h-8 text-slate-400"></i> </div> <div> <p class="stat-value"><span id="grid-value">-.-</span><span class="stat-unit">kW</span></p> <p id="grid-sublabel" class="stat-sublabel">Waiting for data...</p> </div> </div>
+            <div class="card flex flex-col justify-between" id="sufficiency-card"> <div class="flex justify-between items-start"> <p class="stat-label">Self-Sufficiency</p> <i data-lucide="leaf" class="w-8 h-8 text-slate-400"></i> </div> <div> <p class="stat-value"><span id="sufficiency-value">-.-</span><span class="stat-unit">%</span></p> <p id="sufficiency-sublabel" class="stat-sublabel">Waiting for data...</p> </div> </div>
+        </main>
+        
+        <!-- Chart placeholder -->
+        <section><div class="card text-center py-12 text-slate-400">Chart will be implemented in a future stage.</div></section>
+        
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="fixed inset-0 bg-slate-900 bg-opacity-80 modal flex items-center justify-center p-4 hidden">
+            <div class="card w-full max-w-md relative">
+                <button id="close-modal-button" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h2 class="text-xl font-semibold mb-4">Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="apiUrl" class="block text-sm font-medium text-slate-300 mb-1">Backend API URL</label>
+                        <input type="text" id="apiUrl" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-slate-100" placeholder="e.g., http://123.45.67.89:5000">
+                    </div>
+                    <button id="save-settings-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Save and Connect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const settingsModal = document.getElementById('settings-modal');
+            const showModal = () => settingsModal.classList.remove('hidden');
+            const hideModal = () => settingsModal.classList.add('hidden');
+            
+            // --- UI Elements ---
+            document.getElementById('settings-button').addEventListener('click', () => {
+                document.getElementById('apiUrl').value = localStorage.getItem('apiUrl') || '';
+                showModal();
+            });
+            document.getElementById('close-modal-button').addEventListener('click', hideModal);
+
+            // --- Core Application Logic ---
+            let apiUrl = localStorage.getItem('apiUrl');
+
+            async function fetchData() {
+                if (!apiUrl) {
+                    setDisconnected('Backend URL required');
+                    showModal();
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${apiUrl}/api/live_status`);
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    updateUI(data);
+
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    setDisconnected(error.message);
+                }
+            }
+
+            function setDisconnected(message = 'Disconnected') {
+                const statusEl = document.getElementById('connection-status');
+                statusEl.innerHTML = `<span class="w-2 h-2 bg-red-400 rounded-full"></span> ${message}`;
+            }
+
+            function updateUI(data) {
+                document.getElementById('connection-status').innerHTML = `<span class="w-2 h-2 bg-green-400 rounded-full"></span>Connected`;
+                document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+                const toKw = (watts) => (watts / 1000).toFixed(2);
+
+                const solarKw = toKw(data.solar_power);
+                document.getElementById('solar-value').textContent = solarKw;
+                document.getElementById('solar-sublabel').textContent = solarKw > 0.05 ? 'Generating' : 'Idle';
+
+                const batterySOC = Math.round(data.percentage_charged);
+                document.getElementById('battery-value').textContent = batterySOC;
+                document.getElementById('battery-progress').style.width = `${batterySOC}%`;
+                document.getElementById('battery-sublabel').textContent = data.battery_power > 50 ? 'Discharging' : (data.battery_power < -50 ? 'Charging' : 'Idle');
+
+                const homeKw = toKw(data.load_power);
+                document.getElementById('home-value').textContent = homeKw;
+
+                const gridKw = toKw(data.grid_power);
+                document.getElementById('grid-value').textContent = Math.abs(gridKw);
+                document.getElementById('grid-sublabel').textContent = gridKw > 50 ? 'Importing' : (gridKw < -50 ? 'Exporting' : 'Self-powered');
+                
+                let sufficiency = 0;
+                if (data.load_power > 0) {
+                    const solarPower = data.solar_power > 0 ? data.solar_power : 0;
+                    sufficiency = Math.round((solarPower / data.load_power) * 100);
+                }
+                sufficiency = Math.min(100, Math.max(0, sufficiency));
+                document.getElementById('sufficiency-value').textContent = isNaN(sufficiency) ? 0 : sufficiency;
+                
+                lucide.createIcons();
+            }
+
+            document.getElementById('save-settings-button').addEventListener('click', () => {
+                apiUrl = document.getElementById('apiUrl').value.trim();
+                if (apiUrl) {
+                    localStorage.setItem('apiUrl', apiUrl);
+                    hideModal();
+                    fetchData();
+                }
+            });
+
+            // --- Initial Load ---
+            if (apiUrl) {
+                fetchData();
+                setInterval(fetchData, 15000);
+            } else {
+                showModal();
+            }
+        });
+    </script>
+</body>
+</html>
+
